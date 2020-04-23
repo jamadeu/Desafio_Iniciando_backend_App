@@ -5,7 +5,6 @@ import AppError from '../errors/AppError';
 import Transaction from '../models/Transaction';
 import Category from '../models/Category';
 import TransactionRepository from '../repositories/TransactionsRepository';
-import CreateCategoryService from './CreateCategoryService';
 
 interface Request {
   title: string;
@@ -32,23 +31,24 @@ class CreateTransactionService {
       throw new AppError('You do not have enough balance');
     }
 
-    const categoryExists = await categoryRepository.findOne({
-      where: { title: category },
+    let transactionCategory = await categoryRepository.findOne({
+      where: {
+        title: category,
+      },
     });
-    let category_id = '';
-    if (!categoryExists) {
-      const createCategory = new CreateCategoryService();
-      const { id } = await createCategory.execute({ title: category });
-      category_id = id;
-    } else {
-      category_id = categoryExists.id;
-    }
 
+    if (!transactionCategory) {
+      transactionCategory = categoryRepository.create({
+        title: category,
+      });
+
+      await categoryRepository.save(transactionCategory);
+    }
     const transaction = transactionRepository.create({
       title,
       value,
       type,
-      category_id,
+      category: transactionCategory,
     });
 
     await transactionRepository.save(transaction);
